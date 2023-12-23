@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: black;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+  <title>Luminescent Ball Animation with Audio Sync</title>
+</head>
+<body>
+  <canvas id="animationCanvas"></canvas>
+  <button id="startButton">Start Animation</button>
+  <script>
+    const canvas = document.getElementById('animationCanvas');
+    const ctx = canvas.getContext('2d');
+    const audio = new Audio('your-audio-file.mp3'); // Adjust the file name as needed
+    let audioContext, analyser, bufferLength, dataArray;
+    let animationStarted = false;
+
+    // Set canvas dimensions
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // Luminescent ball properties
+    const ball = {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      radius: 20,
+      hue: 0,
+      saturation: 100,
+      lightness: 80,
+      velocity: { x: 5, y: 5 },
+    };
+
+    // Initialize the audio context after user interaction
+    document.getElementById('startButton').addEventListener('click', startAnimation);
+
+    function startAnimation() {
+      if (!animationStarted) {
+        animationStarted = true;
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        const source = audioContext.createMediaElementSource(audio);
+        source.connect(analyser);
+        analyser.connect(audioContext.destination);
+        audio.play();
+
+        // Set up the analyser
+        analyser.fftSize = 256;
+        bufferLength = analyser.frequencyBinCount;
+        dataArray = new Uint8Array(bufferLength);
+
+        // Start the animation loop after initializing audio
+        animate();
+      }
+    }
+
+    // Draw the luminescent ball with a glowing effect
+    function drawBall() {
+      ctx.beginPath();
+      const gradient = ctx.createRadialGradient(ball.x, ball.y, 0, ball.x, ball.y, ball.radius);
+      gradient.addColorStop(0, `hsl(${ball.hue}, ${ball.saturation}%, ${ball.lightness}%)`);
+      gradient.addColorStop(1, `hsla(${ball.hue}, ${ball.saturation}%, ${ball.lightness}%, 0)`);
+      ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+      ctx.fillStyle = gradient;
+      ctx.shadowColor = `hsla(${ball.hue}, ${ball.saturation}%, ${ball.lightness}%, 0.8)`;
+      ctx.shadowBlur = 30;
+      ctx.fill();
+      ctx.closePath();
+    }
+
+    // Update the position and color of the ball based on audio data
+    function updateBall() {
+      analyser.getByteFrequencyData(dataArray);
+      const average = dataArray.reduce((acc, val) => acc + val, 0) / bufferLength;
+      ball.radius = 20 + average / 2; // Adjust the radius based on audio data
+
+      ball.x += ball.velocity.x;
+      ball.y += ball.velocity.y;
+
+      // Bounce off the walls
+      if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) {
+        ball.velocity.x = -ball.velocity.x;
+        changeColor();
+      }
+
+      if (ball.y - ball.radius < 0 || ball.y + ball.radius > canvas.height) {
+        ball.velocity.y = -ball.velocity.y;
+        changeColor();
+      }
+    }
+
+    // Change the color of the ball
+    function changeColor() {
+      ball.hue = (ball.hue + 10) % 360;
+    }
+
+    // Clear the canvas and redraw the ball
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawBall();
+    }
+
+    // Animation loop
+    function animate() {
+      updateBall();
+      draw();
+      requestAnimationFrame(animate);
+    }
+  </script>
+</body>
+</html>
+
+
+
+
